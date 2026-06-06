@@ -1,0 +1,50 @@
+name: Deploy Main Site and 50 Sub-Sites
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create Redirect Sites
+        run: |
+          mkdir -p _site
+          # Copy your existing files to the root
+          cp -r . _site/
+          rm -rf _site/.git _site/.github
+          
+          # Instead of copying files 50 times, we create a small redirect file
+          for i in {1..50}; do
+            mkdir -p "_site/$i"
+            echo "<html><head><meta http-equiv='refresh' content='0; url=../'></head><body>Redirecting...</body></html>" > "_site/$i/index.html"
+          done
+
+      - name: Setup GitHub Pages Environment
+        uses: actions/configure-pages@v5
+
+      - name: Upload Workspace Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - name: Deploy Live to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
